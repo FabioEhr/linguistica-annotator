@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 # --- Configurazione ---------------------------------------------------------
 # SERVICE_ACCOUNT_FILE = "/percorso/al/tuo/service_account.json"
-SHEET_NAME           = "Training_data_donna_disponibile"
+SHEET_NAME = "Training_data_donna_libera"
 MODELS = [
     "gpt-4.1",
     "gpt-4.1-mini",
@@ -19,15 +19,44 @@ MODELS = [
     "gpt-4o-mini",
 ]
 SYSTEM_PROMPT = """
-Sei un classificatore che assegna ogni frase a una di queste categorie:
-1 → Neutro/lavorativo/Pratico: 'disponibile' in senso pratico o lavorativo, per indicare che una donna è libera da impegni o pronta a collaborare (es. lavorativamente, logisticamente). Include anche la disponibilità di un oggetto o servizio. La gestazione per altri è inclusa in questa categoria.
-2 → Sessuale/dispregiativo: uso generalmente con connotazione negativa o sessista, implicando che la donna si concede facilmente ai rapporti amorosi/sessuali o è percepita come tale. Include i servizi di escort e il sex work.
-3 → Figurato/positivo: uso figurato in senso positivo, per indicare apertura mentale, flessibilità, accoglienza, disponibilità all'ascolto o al confronto.
+Sei un classificatore che assegna ogni frase a una di queste categorie sul significato dell'espressione "donna libera":
+
+1 → Libera – emancipata: donna autonoma, consapevole, libera da vincoli culturali o sociali. Connotazione positiva legata all’indipendenza e all’autodeterminazione.
+
+2 → Libera – indipendente affettivamente: donna non impegnata sentimentalmente o coniugalmente (es. single, nubile). Uso neutro o leggermente positivo.
+
+3 → Libera – connotazione sessuale positiva: donna sessualmente disinibita o autodeterminata, descritta con rispetto e ammirazione. Nessuna allusione moralistica.
+
+4 → Libera – connotazione sessuale spregiativa/insinuante: donna etichettata come "libera" con tono ironico o denigratorio, che suggerisce promiscuità o moralismo implicito.
+
+5 → Libera – disinvolta / diretta / franca: donna schietta, spontanea o senza inibizioni nel comportamento o nel modo di esprimersi. Uso neutro o lievemente positivo.
+
+6 → Libera – status legale o giudiziario: donna che ha ottenuto la libertà in senso giuridico (ad esempio dopo detenzione, assoluzione, o proscioglimento). Uso neutro o descrittivo.
 
 Rispondi **ESCLUSIVAMENTE** con un JSON UTF-8 valido:
 {
-  "class": <numero intero tra 1 e 3>
+  "class": <numero intero tra 1 e 6>
 }
+
+Esempi:
+
+Input: "È una donna libera, vive secondo le sue regole e non accetta imposizioni."
+Output: {"class": 1}
+
+Input: "Una donna libera, non è sposata né ha legami stabili."
+Output: {"class": 2}
+
+Input: "È una donna libera anche nella sessualità, e lo rivendica con fierezza."
+Output: {"class": 3}
+
+Input: "Fa tanto la donna libera, ma tutti sanno che è solo una facile."
+Output: {"class": 4}
+
+Input: "È una donna libera, dice sempre quello che pensa e non ha peli sulla lingua."
+Output: {"class": 5}
+
+Input: "Dopo vent'anni di carcere, Patrizia Reggiani è una donna libera."
+Output: {"class": 6}
 """
 
 # --- Setup OpenAI e Google Sheets ------------------------------------------
@@ -52,15 +81,18 @@ ws = gc.open(SHEET_NAME).sheet1
 # --- Prepara la colonna per ciascun modello --------------------------------
 header = ws.row_values(1)
 for mdl in MODELS:
-    base = mdl.replace(".", "_")
-    new_col = f"mod_{base}"
-    if new_col not in header:
-        header.append(new_col)
-        ws.update_cell(1, len(header), new_col)
+    col_name = mdl.replace(".", "_")  # es: gpt-4_1
+    if col_name not in header:
+        header.append(col_name)
+        ws.update_cell(1, len(header), col_name)
 
 # ricava nuovamente colonne e mappa nome→indice
 header = ws.row_values(1)
 col_index = {name: idx+1 for idx, name in enumerate(header)}
+
+# determina colonne di annotazione manuale (escludi id, date, sentence e modelli)
+static_cols = ["id", "date", "sentence"] + [mdl.replace(".", "_") for mdl in MODELS]
+annotation_cols = [h for h in header if h not in static_cols]
 
 # --- Funzione di classificazione -------------------------------------------
 def classify_with_model(sentence: str, model_name: str) -> int:
@@ -76,7 +108,7 @@ def classify_with_model(sentence: str, model_name: str) -> int:
         response_format={"type": "json_object"}
     )
     txt = resp.choices[0].message.content.strip()
-    m = re.search(r'"?class"?\s*[:=]\s*([1-3])', txt)
+    m = re.search(r'"?class"?\s*[:=]\s*([1-6])', txt)
     if m:
         return int(m.group(1))
     try:
@@ -89,16 +121,18 @@ all_rows = ws.get_all_values()[1:]  # esclude header
 print(f"Totale frasi da processare: {len(all_rows)}")
 
 for row_idx, row in enumerate(tqdm(all_rows, desc="Classifying"), start=2):
+    # skip righe senza annotazione manuale
+    if not any(row[header.index(col)].strip() for col in annotation_cols):
+        continue
     sentence = row[header.index("sentence")]  # presuppone colonna "sentence"
     # salta se già classificate (ad es. first model già presente)
-    first_model_col = f"mod_{MODELS[0].replace('.', '_')}"
+    first_model_col = MODELS[0].replace(".", "_")
     if row[col_index[first_model_col]-1].strip():
         continue
 
     # per ciascun modello
     for mdl in MODELS:
-        base = mdl.replace(".", "_")
-        col_name = f"mod_{base}"
+        col_name = mdl.replace(".", "_")
         cls = classify_with_model(sentence, mdl)
         # scrivi subito in cella (puoi anche accumulare e batch-aggiornare)
         ws.update_cell(row_idx, col_index[col_name], str(cls))

@@ -1,5 +1,11 @@
 import re
 import pandas as pd
+from difflib import get_close_matches
+
+# Utility: normalizza spazi bianchi multipli e trimma
+def normalize(s: str) -> str:
+    # collapse multiple whitespace into single spaces and trim
+    return re.sub(r"\s+", " ", s).strip()
 
 # --- 1. Carica e parsifica il file di concordanze --------------------------
 records = []
@@ -24,9 +30,14 @@ df = pd.DataFrame(records)
 # df["date"] = pd.to_datetime(df["date"], errors="coerce")
 
 # --- 2. Suddividi in training (100 esempi) e restante ------------------------
-train_df = df.sample(n=100, random_state=42).reset_index(drop=True)
-# usa gli indici rimanenti per il test set
-test_df  = df.drop(train_df.index).reset_index(drop=True)
+# campiona mantenendo gli indici originali
+train_df = df.sample(n=100, random_state=42)
+# test set = righe non campionate
+test_df  = df.drop(train_df.index)
+
+# resetta gli indici dei DataFrame per l'export
+train_df = train_df.reset_index(drop=True)
+test_df  = test_df.reset_index(drop=True)
 
 # --- 3. Esporta su CSV ------------------------------------------------------
 train_df.to_csv("/Users/Fabio/Documents/Programmi Utili/Collegio Superiore/Linguistica/train_sentences_disponibile.csv",
@@ -45,12 +56,37 @@ try:
         diff_sentences = diff_df["sentence"].astype(str)
     else:
         diff_sentences = diff_df.iloc[:, -1].astype(str)
-    missing = set(diff_sentences) - set(train_df["sentence"].astype(str))
+    # normalize whitespace in both sets
+    train_norm = [normalize(x) for x in train_df["sentence"].astype(str)]
+    diff_norm  = [normalize(x) for x in diff_sentences]
+    missing = set(diff_norm) - set(train_norm)
     if missing:
-        print("Le seguenti frasi mancanti nel training set:")
-        for sent in missing:
-            print(sent)
+        print(f"Numero di frasi mancanti: {len(missing)}")
+        print("Le seguenti frasi (normalize) mancanti nel training set:")
+        for norm_sent in missing:
+            print(f"\nMancante (normalizzata): {norm_sent}")
+            # suggerimenti basati su stringhe normalizzate
+            suggestions = get_close_matches(norm_sent, train_norm, n=3, cutoff=0.6)
+            if suggestions:
+                print("  Possibili corrispondenze normalizzate:")
+                for s in suggestions:
+                    print(f"    - {s}")
     else:
         print("Tutte le frasi da 'diificult_train_sentences_disponibile.csv' sono presenti nel training set.")
+    # --- Verifica se le frasi difficult compaiono nel test set -------------
+    test_norm = [normalize(x) for x in test_df["sentence"].astype(str)]
+    present_in_test = set(diff_norm) & set(test_norm)
+    if present_in_test:
+        print("\nLe seguenti frasi difficult sono presenti nel test set (normalized):")
+        for norm_sent in present_in_test:
+            print(f"\nTrovata (normalizzata): {norm_sent}")
+            # suggerimenti per corrispondenti nel test set
+            suggestions = get_close_matches(norm_sent, test_norm, n=3, cutoff=0.6)
+            if suggestions:
+                print("  Possibili corrispondenze nel test set (normalized):")
+                for s in suggestions:
+                    print(f"    - {s}")
+    else:
+        print("\nNessuna frase difficult trovata nel test set.")
 except FileNotFoundError:
     print(f"File non trovato: {difficult_file}")
