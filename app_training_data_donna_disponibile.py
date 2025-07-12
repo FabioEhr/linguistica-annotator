@@ -13,8 +13,8 @@ SHEET_NAME = "Training_data_donna_disponibile"
 # System prompt for ChatGPT classification (optional)
 SYSTEM_PROMPT = """
 Sei un classificatore che assegna ogni frase a una di queste categorie:
-1 → Neutro/lavorativo/Pratico: 'disponibile' in senso pratico o lavorativo, per indicare che una donna è libera da impegni o pronta a collaborare (es. lavorativamente, logisticamente). Include anche la disponibilità di un oggetto o servizio.
-2 → Sessuale/dispregiativo: uso generalmente con connotazione negativa o sessista, implicando che la donna si concede facilmente ai rapporti amorosi/sessuali o è percepita come tale.
+1 → Neutro/lavorativo/Pratico: 'disponibile' in senso pratico o lavorativo, per indicare che una donna è libera da impegni o pronta a collaborare (es. lavorativamente, logisticamente). Include anche la disponibilità di un oggetto o servizio. La gestazione per altri è inclusa in questa categoria.
+2 → Sessuale/dispregiativo: uso generalmente con connotazione negativa o sessista, implicando che la donna si concede facilmente ai rapporti amorosi/sessuali o è percepita come tale. Include i servizi di escort, il sex work e una generica disponibilità verso rapporti amorosi/sessuali.
 3 → Figurato/positivo: uso figurato in senso positivo, per indicare apertura mentale, flessibilità, accoglienza, disponibilità all'ascolto o al confronto.
 
 Rispondi **ESCLUSIVAMENTE** con un JSON UTF-8 valido:
@@ -46,13 +46,12 @@ st.sidebar.markdown("""
 **1 → Neutro/lavorativo/Pratico**: 'disponibile' in senso pratico o lavorativo, per indicare che una donna è libera da impegni o pronta a collaborare (es. lavorativamente, logisticamente). Include anche la disponibilità di un oggetto o servizio. La gestazione per altri è inclusa in questa categoria.  
     es. "La dottoressa sarà disponibile per ricevervi mercoledì mattina."  
 
-**2 → Sessuale/dispregiativo**: uso generalmente con connotazione negativa o sessista, implicando che la donna si concede facilmente ai rapporti amorosi/sessuali o è percepita come tale. Include i servizi di escort e il sex work.  
+**2 → Sessuale/dispregiativo**: uso generalmente con connotazione negativa o sessista, implicando che la donna si concede facilmente ai rapporti amorosi/sessuali o è percepita come tale. Include i servizi di escort, il sex work e una generica disponibilità verso rapporti amorosi/sessuali.
     es. "Era una donna molto disponibile, con chiunque volesse farle un po' di compagnia..."  
 
 **3 → Figurato/positivo**: uso figurato in senso positivo, per indicare apertura mentale, flessibilità, accoglienza, disponibilità all'ascolto o al confronto.  
     es. "Maria è una persona disponibile al dialogo, sempre pronta ad ascoltare senza giudicare."
 """)
-# -------------------------------------
 
 
 def load_sentences(annotator_input):

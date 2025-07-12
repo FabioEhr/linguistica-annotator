@@ -20,8 +20,29 @@ MODELS = [
 ]
 SYSTEM_PROMPT = """
 Sei un classificatore che assegna ogni frase a una di queste categorie:
-1 → Neutro/lavorativo/Pratico: 'disponibile' in senso pratico o lavorativo, per indicare che una donna è libera da impegni o pronta a collaborare (es. lavorativamente, logisticamente). Include anche la disponibilità di un oggetto o servizio. La gestazione per altri è inclusa in questa categoria.
-2 → Sessuale/dispregiativo: uso generalmente con connotazione negativa o sessista, implicando che la donna si concede facilmente ai rapporti amorosi/sessuali o è percepita come tale. Include i servizi di escort e il sex work.
+1 → Neutro/lavorativo/Pratico: 'disponibile' in senso pratico o lavorativo, per indicare che una donna è libera da impegni o pronta a collaborare (es. lavorativamente, logisticamente). Include anche la disponibilità di un oggetto o servizio.
+2 → Sessuale/dispregiativo: uso generalmente con connotazione negativa o sessista, implicando che la donna si concede facilmente ai rapporti amorosi/sessuali o è percepita come tale. Include i servizi di escort, il sex work e una generica disponibilità verso rapporti amorosi/sessuali.
+3 → Figurato/positivo: uso figurato in senso positivo, per indicare apertura mentale, flessibilità, accoglienza, disponibilità all'ascolto o al confronto.
+
+Rispondi **ESCLUSIVAMENTE** con un JSON UTF-8 valido:
+{
+  "class": <numero intero tra 1 e 3>
+}
+
+Esempi:
+Input: "La dottoressa sarà disponibile per ricevervi mercoledì mattina."
+Output: {"class": 1}
+
+Input: "Era una donna molto disponibile, con chiunque volesse farle un po' di compagnia..."
+Output: {"class": 2}
+
+Input: "Maria è una persona disponibile al dialogo, sempre pronta ad ascoltare senza giudicare."
+Output: {"class": 3}
+"""
+SYSTEM_PROMPT3 = """
+Sei un classificatore che assegna ogni frase a una di queste categorie:
+1 → Neutro/lavorativo/Pratico: 'disponibile' in senso pratico o lavorativo, per indicare che una donna è libera da impegni o pronta a collaborare (es. lavorativamente, logisticamente). Include anche la disponibilità di un oggetto o servizio. Include la gestazione per altri.
+2 → Sessuale/dispregiativo: uso generalmente con connotazione negativa o sessista, implicando che la donna si concede facilmente ai rapporti amorosi/sessuali o è percepita come tale. Include i servizi di escort, il sex work e una generica disponibilità verso rapporti amorosi/sessuali.
 3 → Figurato/positivo: uso figurato in senso positivo, per indicare apertura mentale, flessibilità, accoglienza, disponibilità all'ascolto o al confronto.
 
 Rispondi **ESCLUSIVAMENTE** con un JSON UTF-8 valido:
@@ -53,10 +74,11 @@ ws = gc.open(SHEET_NAME).sheet1
 header = ws.row_values(1)
 for mdl in MODELS:
     base = mdl.replace(".", "_")
-    new_col = f"mod_{base}"
+    new_col = f"mod3_{base}"
     if new_col not in header:
         header.append(new_col)
         ws.update_cell(1, len(header), new_col)
+
 
 # ricava nuovamente colonne e mappa nome→indice
 header = ws.row_values(1)
@@ -67,7 +89,7 @@ def classify_with_model(sentence: str, model_name: str) -> int:
     resp = client.chat.completions.create(
         model=model_name,
         messages=[
-            {"role": "system",  "content": SYSTEM_PROMPT},
+            {"role": "system",  "content": SYSTEM_PROMPT3},
             {"role": "user",    "content": sentence}
         ],
         temperature=0,
@@ -91,15 +113,16 @@ print(f"Totale frasi da processare: {len(all_rows)}")
 for row_idx, row in enumerate(tqdm(all_rows, desc="Classifying"), start=2):
     sentence = row[header.index("sentence")]  # presuppone colonna "sentence"
     # salta se già classificate (ad es. first model già presente)
-    first_model_col = f"mod_{MODELS[0].replace('.', '_')}"
+    first_model_col = f"mod3_{MODELS[0].replace('.', '_')}"
     if row[col_index[first_model_col]-1].strip():
         continue
 
     # per ciascun modello
     for mdl in MODELS:
         base = mdl.replace(".", "_")
-        col_name = f"mod_{base}"
+        col_name = f"mod3_{base}"
         cls = classify_with_model(sentence, mdl)
         # scrivi subito in cella (puoi anche accumulare e batch-aggiornare)
         ws.update_cell(row_idx, col_index[col_name], str(cls))
         time.sleep(0.3)  # per non superare rate limit
+

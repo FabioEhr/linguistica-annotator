@@ -29,8 +29,11 @@ mod4o_col  = next((i for i,h in enumerate(lower_header) if h == "mod_gpt-4o"), N
 mod4_1_col = next((i for i,h in enumerate(lower_header) if h == "mod_gpt-4_1"), None)
 id_col     = next((i for i,h in enumerate(lower_header) if h == "id"), None)
 sent_col   = next((i for i,h in enumerate(lower_header) if h == "sentence"), None)
+# map secondary classification columns
+mod2_4o_col  = next((i for i,h in enumerate(lower_header) if h == "mod2_chat_gpt-4o"), None)
+mod2_4_1_col = next((i for i,h in enumerate(lower_header) if h == "mod2_chat_gpt-4_1"), None)
 
-print("Rilevate le seguenti discrepanze tra Fabio e mod_gpt-4o/mod_gpt-4_1:\n")
+print("Rilevate le seguenti discrepanze tra Fabio e mod_gpt-4o/mod_gpt-4_1/mod2_chat_gpt-4o/mod2_chat_gpt-4_1:\n")
 for row_idx, r in enumerate(rows, start=2):
     # se Fabio non ha etichettato, salta
     fabio = r[fabio_col].strip() if fabio_col is not None else ""
@@ -39,10 +42,14 @@ for row_idx, r in enumerate(rows, start=2):
 
     mod4o  = r[mod4o_col].strip()  if mod4o_col  is not None else ""
     mod4_1 = r[mod4_1_col].strip() if mod4_1_col is not None else ""
+    mod2_4o  = r[mod2_4o_col].strip()  if mod2_4o_col  is not None else ""
+    mod2_4_1 = r[mod2_4_1_col].strip() if mod2_4_1_col is not None else ""
 
     diff_4o  = mod4o  and fabio != mod4o
     diff_4_1 = mod4_1 and fabio != mod4_1
-    if diff_4o or diff_4_1:
+    diff_2_4o  = mod2_4o  and fabio != mod2_4o
+    diff_2_4_1 = mod2_4_1 and fabio != mod2_4_1
+    if diff_4o or diff_4_1 or diff_2_4o or diff_2_4_1:
         # id e frase fallback a row_idx o a intera riga se mancano colonne
         id_val = r[id_col].strip() if id_col is not None else str(row_idx)
         sent_val = r[sent_col].strip() if sent_col is not None else ""
@@ -50,4 +57,6 @@ for row_idx, r in enumerate(rows, start=2):
         print(f"  Fabio      → {fabio}")
         if diff_4o:  print(f"  mod_gpt-4o  → {mod4o}")
         if diff_4_1: print(f"  mod_gpt-4_1 → {mod4_1}")
+        if diff_2_4o:  print(f"  mod2_chat_gpt-4o → {mod2_4o}")
+        if diff_2_4_1: print(f"  mod2_chat_gpt-4_1 → {mod2_4_1}")
         print("-" * 60)
