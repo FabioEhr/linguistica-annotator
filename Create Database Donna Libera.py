@@ -25,10 +25,11 @@ df = pd.DataFrame(records)
 df["date"] = pd.to_datetime(df["date"], errors="coerce")
 df = df.sort_values("date").reset_index(drop=True)
 
-# --- 2. Suddividi in training (200 esempi) e restante ------------------------
+# --- 2. Suddividi in training (200 esempi) e test (800 esempi) -------------
 train_df = df.sample(n=200, random_state=42).reset_index(drop=True)
-# usa gli indici rimanenti per il test set
-test_df  = df.drop(train_df.index).reset_index(drop=True)
+# estrai i rimanenti e poi campiona 800 frasi per il test set
+remaining_df = df.drop(train_df.index).reset_index(drop=True)
+test_df = remaining_df.sample(n=800, random_state=42).reset_index(drop=True)
 
 # --- 3. Esporta su CSV ------------------------------------------------------
 train_df.to_csv("/Users/Fabio/Documents/Programmi Utili/Collegio Superiore/Linguistica/train_sentences_libera.csv", index=False, encoding="utf-8")
