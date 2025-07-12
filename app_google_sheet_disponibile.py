@@ -41,11 +41,6 @@ CATEGORIES = {
 
 # Show instructions in the sidebar
 st.sidebar.title("Spiegazioni delle categorie")
-"""
-st.sidebar.subheader("Categorie")
-for k, v in CATEGORIES.items():
-    st.sidebar.write(f"**{k}** → {v}")
-"""
 st.sidebar.subheader("Definizioni e esempi")
 st.sidebar.markdown("""
 **1 → Neutro/lavorativo/Pratico**: 'disponibile' in senso pratico o lavorativo, per indicare che una donna è libera da impegni o pronta a collaborare (es. lavorativamente, logisticamente). \n
@@ -59,7 +54,7 @@ st.sidebar.markdown("""
 # -------------------------------------
 
 
-def load_sentences(annotator):
+def load_sentences(annotator_input):
     # connect to Google Sheet
     scopes = [
         "https://www.googleapis.com/auth/spreadsheets",
@@ -93,17 +88,24 @@ def load_sentences(annotator):
 
     df["date"] = pd.to_datetime(df["date"], errors="coerce")
 
-    if annotator not in df.columns:
-        # add column in DataFrame
+    # normalize annotator name case-insensitively
+    annotator_input = annotator_input.strip()
+    lower_input = annotator_input.lower()
+    # map existing headers lower→original
+    lower_header_map = {h.lower(): h for h in header}
+    if lower_input in lower_header_map:
+        annotator = lower_header_map[lower_input]
+    else:
+        annotator = annotator_input
+        # add new column to DataFrame and sheet
         df[annotator] = ""
-        # update the sheet header
         ws.update_cell(1, len(header) + 1, annotator)
         header.append(annotator)
 
     done = df[df[annotator] != ""]["id"].tolist()
     done_count = len(done)
     todo = df[~df["id"].isin(done)].sample(frac=1, random_state=42)
-    return todo.reset_index(drop=True), ws, header, done_count, total_count
+    return todo.reset_index(drop=True), ws, header, done_count, total_count, annotator
 
 def save_annotation(ws, header, sheet_row, label, annotator):
     # update the cell at the known sheet row
@@ -119,8 +121,8 @@ if not annotator:
 
 # Initialize session state for this annotator
 if st.session_state.get("annotator") != annotator:
-    st.session_state.annotator = annotator
-    df_loaded, ws, header, done_count, total_count = load_sentences(annotator)
+    df_loaded, ws, header, done_count, total_count, canonical_annotator = load_sentences(annotator)
+    st.session_state.annotator = canonical_annotator
     st.session_state.todo_df = df_loaded
     st.session_state.ws = ws
     st.session_state.header = header
@@ -183,8 +185,19 @@ def on_save_and_quit():
 
 col1, col2, col3 = st.columns([1,1,1])
 with col1:
-    st.button("Indietro", on_click=lambda: setattr(st.session_state, "pointer", st.session_state.history.pop()), disabled=st.session_state.pointer==0)
+    st.button(
+        "Indietro",
+        on_click=lambda: setattr(st.session_state, "pointer", st.session_state.history.pop()),
+        disabled=st.session_state.pointer == 0
+    )
 with col2:
-    st.button("Salva e termina", on_click=on_save_and_quit, disabled=label is None)
+    if st.button("Salva e termina", disabled=label is None):
+        on_save_and_quit()
+        st.success("Annotazione terminata. Grazie!")
+        st.stop()
 with col3:
-    st.button("Salva e passa alla prossima", on_click=on_save, disabled=label is None)
+    st.button(
+        "Salva e passa alla prossima",
+        on_click=on_save,
+        disabled=label is None
+    )
