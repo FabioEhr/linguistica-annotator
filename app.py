@@ -6,8 +6,9 @@ import json
 import os
 
 # --------- Config --------------------
-CSV_PATH = "train_sentences_libera.csv"           # frasi da etichettare
-SAVE_PATH = "annotations.jsonl"      # file dove salvo le risposte
+CSV_PATH  = "train_sentences_libera.csv"
+SAVE_PATH = "annotations.jsonl"
+
 CATEGORIES = {
     1: "Libera – emancipata",
     2: "Libera – indipendente affettivamente, single",
@@ -18,16 +19,23 @@ CATEGORIES = {
 }
 # -------------------------------------
 
-@st.cache_data
-def load_sentences(path):
+def load_sentences(path, ann_path):
     df = pd.read_csv(path)
-    # frasi non ancora annotate
-    done_ids = {json.loads(l)["id"] for l in open(SAVE_PATH)} if os.path.exists(SAVE_PATH) else set()
+    if "id" not in df.columns:
+        df.insert(0, "id", df.index)
+    done_ids = set()
+    if os.path.exists(ann_path):
+        with open(ann_path, "r", encoding="utf-8") as f:
+            for line in f:
+                try:
+                    done_ids.add(json.loads(line)["id"])
+                except:
+                    pass
     df = df[~df["id"].isin(done_ids)]
     return df.sample(frac=1, random_state=42).reset_index(drop=True)
 
-def save_annotation(row_id, sent_id, label, annotator):
-    record = {
+def save_annotation(sent_id, label, annotator):
+    rec = {
         "row_uuid": str(uuid.uuid4()),
         "annotator": annotator,
         "timestamp": datetime.utcnow().isoformat(),
@@ -35,16 +43,16 @@ def save_annotation(row_id, sent_id, label, annotator):
         "label": int(label)
     }
     with open(SAVE_PATH, "a", encoding="utf-8") as f:
-        f.write(json.dumps(record, ensure_ascii=False) + "\n")
+        f.write(json.dumps(rec, ensure_ascii=False) + "\n")
 
-# --------- UI ------------------------
 st.title("Annotazione: significato di «donna libera»")
 
 annotator = st.text_input("Inserisci il tuo nome o nickname:")
 if not annotator:
+    st.warning("Per favore inserisci il tuo nome o nickname per cominciare.")
     st.stop()
 
-df = load_sentences(CSV_PATH)
+df = load_sentences(CSV_PATH, SAVE_PATH)
 if df.empty:
     st.success("Tutte le frasi sono state annotate. Grazie!")
     st.stop()
@@ -57,9 +65,14 @@ label = st.radio(
     "Seleziona la categoria corretta:",
     options=list(CATEGORIES.keys()),
     format_func=lambda x: f"{x} → {CATEGORIES[x]}",
-    index=None
 )
 
-if st.button("Salva e passa alla prossima", disabled=label is None):
-    save_annotation(row.name, row["id"], label, annotator)
-    st.rerun()
+# define a callback that saves and does nothing else
+def on_save():
+    save_annotation(row["id"], label, annotator)
+
+st.button(
+    "Salva e passa alla prossima",
+    on_click=on_save,
+    disabled=label is None
+)
