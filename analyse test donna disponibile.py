@@ -4,7 +4,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 
 # --- Configurazione ---------------------------------------------------------
-SHEET_NAME   = "Training_data_donna_disponibile"
+SHEET_NAME   = "test data donna disponibile"
 SECRETS_PATH = os.path.expanduser(
     "~/Documents/Programmi Utili/Collegio Superiore/Linguistica/.streamlit/secrets.toml"
 )
