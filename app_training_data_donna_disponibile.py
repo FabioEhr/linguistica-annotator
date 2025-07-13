@@ -17,9 +17,10 @@ Sei un classificatore che assegna ogni frase a una di queste categorie:
 2 → Sessuale/dispregiativo: uso generalmente con connotazione negativa o sessista, implicando che la donna si concede facilmente ai rapporti amorosi/sessuali o è percepita come tale. Include i servizi di escort, il sex work e una generica disponibilità verso rapporti amorosi/sessuali.
 3 → Figurato/positivo: uso figurato in senso positivo, per indicare apertura mentale, flessibilità, accoglienza, disponibilità all'ascolto o al confronto.
 
+4 → Aggettivo non riferito a donna: uso di "disponibile" non riferito alla donna, indica una disponibilità generica di oggetti, servizi o persone in senso non femminile.
 Rispondi **ESCLUSIVAMENTE** con un JSON UTF-8 valido:
 {
-  "class": <numero intero tra 1 e 3>
+  "class": <numero intero tra 1 e 4>
 }
 
 Esempi:
@@ -31,19 +32,23 @@ Output: {"class": 2}
 
 Input: "Maria è una persona disponibile al dialogo, sempre pronta ad ascoltare senza giudicare."
 Output: {"class": 3}
+
+Input: "Ecco il nuovo maglione per donne disponibile dal 4 marzo"
+Output: {"class": 4}
 """
 
 CATEGORIES = {
     1: "Neutro/lavorativo/Pratico",
     2: "Sessuale/dispregiativo",
-    3: "Figurato/positivo"
+    3: "Figurato/positivo",
+    4: "Aggettivo non riferito a donna"
 }
 
 # Show instructions in the sidebar
 st.sidebar.title("Spiegazioni delle categorie")
 st.sidebar.subheader("Definizioni")
 st.sidebar.markdown("""
-**1 → Neutro/lavorativo/Pratico**: 'disponibile' in senso pratico o lavorativo, per indicare che una donna è libera da impegni o pronta a collaborare (es. lavorativamente, logisticamente). Include anche la disponibilità di un oggetto o servizio. La gestazione per altri è inclusa in questa categoria.  
+**1 → Neutro/lavorativo/Pratico**: 'disponibile' in senso pratico o lavorativo, per indicare che una donna è libera da impegni o pronta a collaborare (es. lavorativamente, logisticamente).  La gestazione per altri è inclusa in questa categoria.  
     es. "La dottoressa sarà disponibile per ricevervi mercoledì mattina."  
 
 **2 → Sessuale/dispregiativo**: uso generalmente con connotazione negativa o sessista, implicando che la donna si concede facilmente ai rapporti amorosi/sessuali o è percepita come tale. Include i servizi di escort, il sex work e una generica disponibilità verso rapporti amorosi/sessuali.
@@ -51,6 +56,9 @@ st.sidebar.markdown("""
 
 **3 → Figurato/positivo**: uso figurato in senso positivo, per indicare apertura mentale, flessibilità, accoglienza, disponibilità all'ascolto o al confronto.  
     es. "Maria è una persona disponibile al dialogo, sempre pronta ad ascoltare senza giudicare."
+
+**4 → Aggettivo non riferito a donna**: uso di "disponibile" non riferito alla donna, per indicare disponibilità generica di oggetti o servizi.  
+        es. "Ecco il nuovo maglione per donne disponibile dal 4 marzo"
 """)
 
 
@@ -112,7 +120,7 @@ def save_annotation(ws, header, sheet_row, label, annotator):
     col_number = header.index(annotator) + 1
     ws.update_cell(sheet_row, col_number, str(label))
 
-st.title("Annotazione: significato di «donna disponibile»")
+st.title("Annotazione: significato di «donna disponibile» (categorie 1-4)")
 
 annotator = st.text_input("Inserisci il tuo nome o nickname:")
 if not annotator:
