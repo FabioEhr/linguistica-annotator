@@ -95,6 +95,10 @@ all_rows = ws.get_all_values()[1:]  # esclude header
 print(f"Totale frasi da processare: {len(all_rows)}")
 
 for row_idx, row in enumerate(tqdm(all_rows, desc="Classifying"), start=2):
+    # If pointer is beyond last index, we are done
+    if row_idx-2 >= len(all_rows):
+        print("Hai terminato tutte le frasi. Grazie!")
+        break
     sentence = row[header.index("sentence")]  # presuppone colonna "sentence"
     # salta se già classificate (ad es. first model già presente)
     first_model_col = f"mod_{MODELS[0].replace('.', '_')}"
@@ -109,4 +113,3 @@ for row_idx, row in enumerate(tqdm(all_rows, desc="Classifying"), start=2):
         # scrivi subito in cella (puoi anche accumulare e batch-aggiornare)
         ws.update_cell(row_idx, col_index[col_name], str(cls))
         time.sleep(0.3)  # per non superare rate limit
-

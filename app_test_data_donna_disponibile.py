@@ -137,7 +137,11 @@ if df.empty:
     st.stop()
 
 pointer = st.session_state.pointer
-row = df.iloc[pointer]
+try:
+    row = df.iloc[pointer]
+except IndexError:
+    st.success("Hai terminato tutte le frasi. Grazie!")
+    st.stop()
 st.markdown(f"### Frase #{row['id']} ({row['date'].date() if not pd.isna(row['date']) else ''})")
 with st.expander("Mostra/Nascondi testo della frase", expanded=True):
     st.write(row["sentence"])
